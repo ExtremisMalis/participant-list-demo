@@ -1,6 +1,6 @@
 const Users = [
-  { id: 1, username: "AdminCP" },
-  { id: 67, username: "Aranami Sakado" },
+  { UserID: 2, UserLogin: "AdminCP" },
+  { UserID: 67, UserLogin: "Aranami Sakado" },
   // TODO
 ];
 
