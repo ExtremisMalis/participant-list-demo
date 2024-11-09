@@ -1,5 +1,5 @@
 const Users = [
-  { id: 66, username: "Kolton Ryder" },
+  { id: 1, username: "AdminCP" },
   { id: 67, username: "Aranami Sakado" },
   // TODO
 ];
