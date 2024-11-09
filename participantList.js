@@ -1,15 +1,14 @@
-const Users = [
-  { UserID: 2, UserLogin: "AdminCP" },
-  { UserID: 67, UserLogin: "Aranami Sakado" },
-  // TODO
-];
-
-function addUserToList(userId) {
-  const user = Users.find(u => u.id === userId);
-  if (user) {
-    const userList = document.querySelectorAll('userList');
-    if (!userList.innerHTML.includes(user.username)) { 
-      userList.innerHTML += `<li>${user.username}</li>`;
-    }
-  }
+async function fetchParticipants() {
+  const response = await fetch('https://raw.githubusercontent.com/ExtremisMalis/participant-list-demo/refs/heads/main/participants.json');
+  const participants = await response.json();
+  
+  const participantList = document.querySelectorAll('participant-list');
+  participantList.innerHTML = '';
+  participants.forEach(participant => {
+    const listItem = document.createElement('p');
+    listItem.textContent = participant.username;
+    participantList.appendChild(listItem);
+  });
 }
+
+window.onload = fetchParticipants;
