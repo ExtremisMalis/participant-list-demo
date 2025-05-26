@@ -20,14 +20,14 @@ function decodeHtml(html) {
 function extractIconFromHtml(html) {
     if (!html) return '';
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const img = doc.querySelector('img:first-of-type');
+    const img = doc.querySelector('charicon img');
     return img ? img.src : '';
 }
 
 function extractPlaqueFromHtml(html) {
     if (!html) return null;
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    return doc.querySelector('plaque');
+    return doc.querySelector('.plaque');
 }
 
 function extractPlaqueTexts(plaque) {
@@ -42,55 +42,47 @@ function extractPlaqueTexts(plaque) {
 function extractPlaqueColor(plaque) {
     if (!plaque) return '#D4623E';
     const style = plaque.getAttribute('style') || '';
-    const colorMatch = style.match(/radial-gradient\([^,]+, (#[0-9A-F]{6})/i);
+    const colorMatch = style.match(/color:\s*(#[0-9A-F]{6})/i);
     return colorMatch ? colorMatch[1] : '#D4623E';
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     const userBg = typeof UserFld3 !== 'undefined' ? decodeHtml(UserFld3).match(/src=['"]([^'"]+)['"]/)?.[1] : '';
-    const userIcon = typeof UserFld2 !== 'undefined' ? extractIconFromHtml(decodeHtml(UserFld2)) : 
-                    (typeof UserFld5 !== 'undefined' ? decodeHtml(UserFld5).match(/src=['"]([^'"]+)['"]/)?.[1] : '');
-    const userPlaque = typeof UserFld2 !== 'undefined' ? extractPlaqueFromHtml(decodeHtml(UserFld2)) : null;
+    const userIcon = typeof UserFld2 !== 'undefined' ? extractIconFromHtml(decodeHtml(UserFld2)) : '';
+    const userPlaque = document.querySelector('.fitting-room .plaque');
     
     window.userInitialColor = userPlaque ? extractPlaqueColor(userPlaque) : '#D4623E';
     window.initialUserSettings = {
         bg: userBg,
         icon: userIcon,
         plaqueHTML: userPlaque ? userPlaque.outerHTML : '',
-        plaqueTexts: userPlaque ? extractPlaqueTexts(userPlaque) : ['первая строка плашки', 'вторая строка плашки']
+        plaqueTexts: userPlaque ? extractPlaqueTexts(userPlaque) : ['', '']
     };
     
     saveInitialState();
     
     initAvatar();
     initUsername();
-    initPersonalTitle();
     initPlaque();
     initBackgrounds();
     initIcons();
     initButtons();
     
     if (window.initialUserSettings.icon) {
-        const targetIcon = document.querySelector('.fitting-icon');
+        const targetIcon = document.querySelector('charicon img');
         if (targetIcon) {
             targetIcon.src = window.initialUserSettings.icon;
-            document.querySelectorAll('fittingicons img').forEach(icon => {
-                icon.classList.remove('fit-selected');
-                if (icon.src === window.initialUserSettings.icon) {
-                    icon.classList.add('fit-selected');
-                }
-            });
         }
     }
 });
 
 function saveInitialState() {
-    const plaqueElement = document.querySelector('plaque');
+    const plaqueElement = document.querySelector('.plaque');
     const plaqueTexts = plaqueElement ? Array.from(plaqueElement.querySelectorAll('p')).map(p => p.textContent) : ['', ''];
     
     window.initialState = {
         bg: document.querySelector('.fitting-bg img')?.src || '',
-        icon: document.querySelector('.fitting-icon')?.src || '',
+        icon: document.querySelector('charicon img')?.src || '',
         avatar: document.querySelector('.fitting-avatar img')?.src || '',
         username: document.querySelector('.fitting-author a')?.textContent || '',
         plaqueHTML: plaqueElement?.outerHTML || '',
@@ -99,7 +91,7 @@ function saveInitialState() {
 }
 
 function initAvatar() {
-    const avatarContainers = document.querySelectorAll('li.fitting-avatar img');
+    const avatarContainers = document.querySelectorAll('.fitting-avatar img');
     const initialAvatar = typeof UserAvatar !== 'undefined' ? UserAvatar : window.initialState.avatar;
     
     if (initialAvatar) {
@@ -203,45 +195,22 @@ function initUsername() {
     }
 }
 
-function initPersonalTitle() {
-    if (typeof UserFld4 !== 'undefined' && UserFld4) {
-        const decodedHTML = new DOMParser()
-            .parseFromString(UserFld4, 'text/html')
-            .documentElement.textContent;
-
-        document.querySelectorAll('li.fitting-lz lz').forEach(block => {
-            block.innerHTML = decodedHTML;
-        });
-    }
-}
-
 function initPlaque() {
-    let plaqueElement = document.querySelector('.fitting-plaque plaque');
+    let plaqueElement = document.querySelector('.plaque');
     if (!plaqueElement) return;
     window.updatePlaque = updatePlaque;
 
     if (window.initialUserSettings.plaqueHTML) {
         const userPlaque = new DOMParser()
             .parseFromString(window.initialUserSettings.plaqueHTML, 'text/html')
-            .querySelector('plaque');
+            .querySelector('.plaque');
 
         if (userPlaque) {
-            const currentInputs = Array.from(document.querySelectorAll('.plaque-input')).map(input => input.value);
-
             plaqueElement.innerHTML = userPlaque.innerHTML;
             const plaqueStyle = userPlaque.getAttribute('style');
             if (plaqueStyle) {
                 plaqueElement.setAttribute('style', plaqueStyle);
             }
-
-            plaqueElement = document.querySelector('.fitting-plaque plaque');
-
-            const updatedParagraphs = plaqueElement.querySelectorAll('p');
-            currentInputs.forEach((text, index) => {
-                if (updatedParagraphs[index] && text !== (window.initialUserSettings.plaqueTexts[index] || window.initialState.plaqueTexts[index])) {
-                    updatedParagraphs[index].textContent = text;
-                }
-            });
         }
     }
 
@@ -278,17 +247,16 @@ function initPlaque() {
     controlsContainer.appendChild(colorContainer);
 
     function updatePlaque() {
-        const plaqueElement = document.querySelector('.fitting-plaque plaque');
+        const plaqueElement = document.querySelector('.plaque');
         if (!plaqueElement) return;
 
-        const inputs = document.querySelectorAll('.plaque-input');
-        const paragraphs = plaqueElement.querySelectorAll('p');
-
-        inputs.forEach((input, index) => {
-            if (paragraphs[index]) {
-                paragraphs[index].textContent = input.value;
-            }
-        });
+        const pTags = plaqueElement.querySelectorAll('p');
+        if (pTags[0]) {
+            pTags[0].textContent = document.querySelector('.plaque-input-line1')?.value || '';
+        }
+        if (pTags[1]) {
+            pTags[1].textContent = document.querySelector('.plaque-input-line2')?.value || '';
+        }
 
         let color = colorPicker.value;
         if (/^#[0-9A-F]{6}$/i.test(colorInput.value)) {
@@ -296,7 +264,7 @@ function initPlaque() {
             colorPicker.value = color;
         }
 
-        plaqueElement.style.background = `radial-gradient(98.64% 362.92% at 56% -21%, ${color} 0%, #FFF0EB 80%)`;
+        plaqueElement.style.color = color;
     }
 
     document.querySelectorAll('.plaque-input').forEach(input => {
@@ -330,7 +298,7 @@ function initPlaque() {
 
     const initialTexts = window.initialUserSettings.plaqueTexts || [];
     document.querySelectorAll('.plaque-input').forEach((input, index) => {
-        input.value = initialTexts[index] || '';
+        if (input) input.value = initialTexts[index] || '';
     });
 
     updatePlaque(); 
@@ -367,7 +335,7 @@ function initBackgrounds() {
 
 function initIcons() {
     const fittingIconsContainer = document.querySelector('fittingicons');
-    const targetIcon = document.querySelector('.fitting-icon');
+    const targetIcon = document.querySelector('charicon img');
     
     if (fittingIconsContainer && targetIcon) {
         if (window.initialUserSettings.icon) {
@@ -406,16 +374,15 @@ function initButtons() {
     }
 }
 
-// копирование 
-
 function copyChanges() {
     let fullCode = '';
 
     const currentBg = document.querySelector('.fitting-bg img')?.src || '';
-    const currentIcon = document.querySelector('.fitting-icon')?.src || '';
-    const plaque = document.querySelector('plaque');
+    const currentIcon = document.querySelector('charicon img')?.src || '';
+    const plaque = document.querySelector('.plaque');
 
-    const currentTextInputs = Array.from(document.querySelectorAll('.plaque-input')).map(input => input.value.trim());
+    const currentText1 = document.querySelector('.plaque-input-line1')?.value || '';
+    const currentText2 = document.querySelector('.plaque-input-line2')?.value || '';
 
     const colorInput = document.querySelector('.plaque-controls input[type="text"][placeholder^="HEX"]');
     const colorPicker = document.querySelector('.plaque-controls input[type="color"]');
@@ -427,7 +394,7 @@ function copyChanges() {
     }
 
     const plaqueHTML = plaque
-        ? `<plaque style="background: radial-gradient(98.64% 362.92% at 56% -21%, ${currentColor} 0%, #FFF0EB 80%)"><p>${currentTextInputs[0] || ''}</p><p>${currentTextInputs[1] || ''}</p></plaque>`
+        ? `<div class="plaque" style="color: ${currentColor}"><p>${currentText1}</p><p>${currentText2}</p></div>`
         : '';
 
     const bgChanged = currentBg !== (window.initialUserSettings.bg || window.initialState.bg);
@@ -438,12 +405,12 @@ function copyChanges() {
         const rawHTML = window.initialUserSettings.plaqueHTML || window.initialState.plaqueHTML || '';
         const temp = document.createElement('div');
         temp.innerHTML = rawHTML;
-        const style = temp.querySelector('plaque')?.getAttribute('style') || '';
-        const match = style.match(/radial-gradient\([^,]+, (#[0-9A-Fa-f]{6})/i);
+        const style = temp.querySelector('.plaque')?.getAttribute('style') || '';
+        const match = style.match(/color:\s*(#[0-9A-Fa-f]{6})/i);
         return match ? match[1].toLowerCase() : '#d4623e';
     })();
 
-    const textChanged = currentTextInputs[0] !== initialTexts[0] || currentTextInputs[1] !== initialTexts[1];
+    const textChanged = currentText1 !== initialTexts[0] || currentText2 !== initialTexts[1];
     const colorChanged = currentColor.toLowerCase() !== initialColor;
     const plaqueChanged = textChanged || colorChanged;
 
@@ -452,7 +419,7 @@ function copyChanges() {
     }
 
     if (iconChanged) {
-        fullCode += `иконка - 150 \n[code]<img src="${currentIcon}" class="fitting-icon">[/code]\n\n`;
+        fullCode += `иконка - 150 \n[code]<charicon><img src="${currentIcon}"></charicon>[/code]\n\n`;
     }
 
     if (plaqueChanged && plaqueHTML) {
@@ -465,11 +432,7 @@ function copyChanges() {
     } else {
         showNotification('Никаких изменений для копирования не найдено!');
     }
-    
 }
-
-
-// сброс до базовых настроек профиля
 
 function resetToInitial() {
     const bgImg = document.querySelector('.fitting-bg img');
@@ -478,7 +441,7 @@ function resetToInitial() {
         window.__changed.bg = false;
     }
 
-    const iconImg = document.querySelector('.fitting-icon');
+    const iconImg = document.querySelector('charicon img');
     if (iconImg) {
         iconImg.src = window.initialUserSettings.icon || window.initialState.icon;
         window.__changed.icon = false;
@@ -502,10 +465,10 @@ function resetToInitial() {
         element.textContent = typeof UserLogin !== 'undefined' ? UserLogin : window.initialState.username;
     });
 
-    const plaque = document.querySelector('plaque');
+    const plaque = document.querySelector('.plaque');
     if (plaque) {
         const initialPlaque = window.initialUserSettings.plaqueHTML
-            ? new DOMParser().parseFromString(window.initialUserSettings.plaqueHTML, 'text/html').querySelector('plaque')
+            ? new DOMParser().parseFromString(window.initialUserSettings.plaqueHTML, 'text/html').querySelector('.plaque')
             : null;
 
         if (initialPlaque) {
@@ -517,20 +480,17 @@ function resetToInitial() {
             texts.forEach((text, index) => {
                 if (pTags[index]) pTags[index].textContent = text;
             });
-            plaque.style.background = `radial-gradient(98.64% 362.92% at 56% -21%, ${window.userInitialColor} 0%, #FFF0EB 80%)`;
+            plaque.style.color = window.userInitialColor;
         }
 
         window.__changed.plaqueText = false;
         window.__changed.plaqueColor = false;
     }
 
-    const textInputs = document.querySelectorAll('.plaque-input');
-    if (textInputs) {
+    document.querySelectorAll('.plaque-input').forEach((input, index) => {
         const texts = window.initialUserSettings.plaqueTexts || window.initialState.plaqueTexts;
-        texts.forEach((text, idx) => {
-            if (textInputs[idx]) textInputs[idx].value = text;
-        });
-    }
+        if (input && texts[index]) input.value = texts[index];
+    });
 
     if (typeof window.updatePlaque === 'function') {
         window.updatePlaque();
@@ -541,7 +501,7 @@ function resetToInitial() {
 
     if (colorInput && colorPicker) {
         const initialColor = window.initialUserSettings.plaqueHTML
-            ? extractPlaqueColor(new DOMParser().parseFromString(window.initialUserSettings.plaqueHTML, 'text/html').querySelector('plaque'))
+            ? extractPlaqueColor(new DOMParser().parseFromString(window.initialUserSettings.plaqueHTML, 'text/html').querySelector('.plaque'))
             : window.userInitialColor;
 
         colorInput.value = initialColor;
@@ -550,7 +510,6 @@ function resetToInitial() {
 
     showNotification('Все значения сброшены к изначальным');
 }
-
 
 function createModalButton(text, onClick, bgColor = '#e0e0e0', textColor = 'black') {
     const button = document.createElement('button');
