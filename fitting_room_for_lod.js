@@ -12,8 +12,14 @@ window.initialState = {};
 window.initialUserSettings = {};
 
 function decodeHtml(html) {
+    if (!html) return '';
+    const safeHtml = html.replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/"/g, "&quot;")
+                        .replace(/'/g, "&#039;");
     const txt = document.createElement('textarea');
-    txt.innerHTML = html;
+    txt.innerHTML = safeHtml;
     return txt.value;
 }
 
