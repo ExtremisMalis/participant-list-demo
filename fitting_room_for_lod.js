@@ -47,7 +47,7 @@ function extractPlaqueColor(plaque) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    const userBg = typeof UserFld1 !== 'undefined' ? decodeHtml(UserFld1).match(/src=['"]([^'"]+)['"]/)?.[1] : '';
+    const userBg = typeof UserFld3 !== 'undefined' ? decodeHtml(UserFld3).match(/src=['"]([^'"]+)['"]/)?.[1] : '';
     const userIcon = typeof UserFld2 !== 'undefined' ? extractIconFromHtml(decodeHtml(UserFld2)) : 
                     (typeof UserFld5 !== 'undefined' ? decodeHtml(UserFld5).match(/src=['"]([^'"]+)['"]/)?.[1] : '');
     const userPlaque = typeof UserFld2 !== 'undefined' ? extractPlaqueFromHtml(decodeHtml(UserFld2)) : null;
