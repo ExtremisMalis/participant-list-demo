@@ -1,4 +1,3 @@
-document.addEventListener('DOMContentLoaded', function() {
 window.__changed = {
     bg: false,
     icon: false,
@@ -585,4 +584,4 @@ function showNotification(message) {
         setTimeout(() => notification.remove(), 300);
     }, 2000);
 }
-}
+
