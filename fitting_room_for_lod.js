@@ -1,3 +1,4 @@
+document.addEventListener('DOMContentLoaded', function() {
 window.__changed = {
     bg: false,
     icon: false,
@@ -83,7 +84,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function saveInitialState() {
-    const plaqueElement = document.querySelector('.plaque');
+    const plaqueElement = document.querySelector('.plaque') || 
+                     document.querySelector('plaque') || 
+                     document.querySelector('.fitting-plaque plaque');
     const plaqueTexts = plaqueElement ? Array.from(plaqueElement.querySelectorAll('p')).map(p => p.textContent) : ['', ''];
     
     window.initialState = {
@@ -581,4 +584,5 @@ function showNotification(message) {
         notification.style.opacity = '0';
         setTimeout(() => notification.remove(), 300);
     }, 2000);
+}
 }
