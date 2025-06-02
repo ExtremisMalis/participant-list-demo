@@ -1,3 +1,4 @@
+
 window.__changed = {
     bg: false,
     icon: false,
@@ -22,15 +23,11 @@ function decodeHtml(html) {
     return txt.value;
 }
 
-function extractIconFromHtml(html) {
-    if (!html) return '';
-    try {
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        return doc.querySelector('charicon img')?.src || '';
-    } catch (e) {
-        console.error('Error parsing icon HTML:', e);
-        return '';
-    }
+function extractIconFromUserFld2() {
+    if (typeof UserFld2 === 'undefined' || !UserFld2) return '';
+    
+    const imgMatch = UserFld2.match(/<img[^>]+src=['"]([^'"]+)['"]/);
+    return imgMatch ? imgMatch[1] : '';
 }
 
 function extractPlaqueFromHtml(html) {
@@ -55,9 +52,37 @@ function extractPlaqueColor(plaque) {
     return colorMatch ? colorMatch[1] : '#FFF';
 }
 
-document.addEventListener('DOMContentLoaded', function () {
+
+  document.addEventListener('DOMContentLoaded', function() {
     const userBg = typeof UserFld3 !== 'undefined' ? decodeHtml(UserFld3).match(/src=['"]([^'"]+)['"]/)?.[1] : '';
-    const userIcon = typeof UserFld2 !== 'undefined' ? extractIconFromHtml(decodeHtml(UserFld2)) : '';
+
+    const decodedFld2 = decodeHtml(UserFld2);
+    
+    const userIcon = decodedFld2.match(/<img[^>]+src=['"]([^'"]+)['"]/)?.[1] || '';
+    
+    const iconImg = document.querySelector('.pa-fld2 charicon.ficon img');
+    
+    if (iconImg) {
+        if (userIcon) {
+            iconImg.src = userIcon;
+            console.log('Иконка установлена:', userIcon);
+            
+            document.querySelectorAll('fittingicons img').forEach(icon => {
+                icon.classList.toggle('fit-selected', icon.src === userIcon);
+            });
+        } else {
+            console.warn('Не удалось извлечь иконку из:', decodedFld2);
+        }
+    }
+
+function decodeHtml(html) {
+    const txt = document.createElement('textarea');
+    txt.innerHTML = html;
+    return txt.value;
+}
+
+
+
     const userPlaque = document.querySelector('.fitting-room .plaque');
 
     window.userInitialColor = userPlaque ? extractPlaqueColor(userPlaque) : '#FFF';
@@ -68,6 +93,8 @@ document.addEventListener('DOMContentLoaded', function () {
         plaqueTexts: userPlaque ? extractPlaqueTexts(userPlaque) : ['', '']
     };
 
+
+
     saveInitialState();
 
     initAvatar();
@@ -77,29 +104,32 @@ document.addEventListener('DOMContentLoaded', function () {
     initIcons();
     initButtons();
     initManualInputs();
-    initUserIcon();
 
-    if (window.initialUserSettings.icon) {
-        let targetIcon = document.querySelector('charicon img');
-        if (!targetIcon) {
-            const charicon = document.querySelector('charicon') || document.createElement('charicon');
-            document.body.appendChild(charicon);
-            charicon.innerHTML = `<img src="${window.initialUserSettings.icon}">`;
-            targetIcon = charicon.querySelector('img');
-        } else {
-            targetIcon.src = window.initialUserSettings.icon;
-        }
+if (window.initialUserSettings.icon) {
+    const targetIcon = document.querySelector('.pa-fld2 charicon img');
+    if (targetIcon) {
+        targetIcon.src = window.initialUserSettings.icon;
+        document.querySelectorAll('fittingicons img').forEach(icon => {
+            icon.classList.remove('fit-selected');
+            if (icon.src === window.initialUserSettings.icon) {
+                icon.classList.add('fit-selected');
+            }
+        });
     }
+}
+
+
+
 });
 
 function saveInitialState() {
-    const userPlaque = document.querySelector('.pa-fld1 .plaque');
+    const userPlaque = document.querySelector('.fitting-plaque .plaque');
     const plaqueTexts = userPlaque ? Array.from(userPlaque.querySelectorAll('p')).map(p => p.textContent) : ['', ''];
     const plaqueImg = userPlaque?.querySelector('img')?.src || '';
 
     window.initialState = {
         bg: document.querySelector('.fitting-bg img')?.src || '',
-        icon: document.querySelector('charicon img')?.src || '',
+        icon: document.querySelector('.pa-fld2 charicon img')?.src || '',
         avatar: document.querySelector('.fitting-avatar img')?.src || '',
         username: document.querySelector('.fitting-author a')?.textContent || '',
         plaqueHTML: userPlaque?.outerHTML || '',
@@ -124,6 +154,9 @@ function initAvatar() {
         });
     }
 }
+
+console.log('UserFld2 содержимое:', UserFld2);
+console.log('Извлечённая иконка:', extractIconFromUserFld2());
 
 function openAvatarEditor(imgElement) {
     const existingModal = document.querySelector('.edit-modal.avatar-modal');
@@ -213,23 +246,6 @@ function initUsername() {
     }
 }
 
-function initUserIcon() {
-    const chariconContainer = document.querySelector('.pa-fld2 charicon');
-    
-    if (!chariconContainer) return;
-    
-    const fishIcon = chariconContainer.querySelector('img');
-    
-    if (window.initialUserSettings.icon) {
-        if (fishIcon) {
-            fishIcon.src = window.initialUserSettings.icon;
-        } 
-        else {
-            chariconContainer.innerHTML = `<img src="${window.initialUserSettings.icon}">`;
-        }
-    }
-}
-
 function initPlaque() {
     const plaqueElement = document.querySelector('.fitting-plaque .plaque');
     if (!plaqueElement) return;
@@ -292,17 +308,21 @@ function initPlaque() {
 }
 
 function initManualInputs() {
-    document.querySelector('.fit-icon')?.addEventListener('click', function () {
-        const url = document.querySelector('.icon-input').value.trim();
-        if (url) {
-            const icon = document.querySelector('charicon img');
-            if (icon) {
-                icon.src = url;
-                window.__changed.icon = true;
-                showNotification('Иконка обновлена!');
-            }
-        }
-    });
+document.querySelector('.fit-icon')?.addEventListener('click', function () {
+  const url = document.querySelector('.icon-input').value.trim();
+  if (url) {
+    const icon = document.querySelector('.pa-fld2 charicon.ficon img');
+    if (icon) {
+      icon.src = url;
+      window.__changed.icon = true;
+      showNotification('Иконка обновлена!');
+      document.querySelectorAll('fittingicons img').forEach(img => {
+        img.classList.remove('fit-selected');
+      });
+    }
+  }
+});
+
 
     document.querySelector('.fit-bg')?.addEventListener('click', function () {
         const url = document.querySelector('.bg-input').value.trim();
@@ -364,62 +384,64 @@ function initBackgrounds() {
                 bgImg.classList.add('fit-selected');
             }
 
-            bgImg.addEventListener('click', function () {
+            bgImg.addEventListener('click', function() {
                 bgContainer.querySelectorAll('img').forEach(img => {
                     img.classList.remove('fit-selected');
                 });
 
                 this.classList.add('fit-selected');
+                
                 targetBg.src = this.src;
+                
                 window.__changed.bg = true;
+                
+                showNotification('Фон изменен');
             });
         });
+
+        setTimeout(() => {
+            if (window.initialUserSettings.bg && targetBg.src !== window.initialUserSettings.bg) {
+                targetBg.src = window.initialUserSettings.bg;
+                bgContainer.querySelectorAll('img').forEach(img => {
+                    img.classList.remove('fit-selected');
+                    if (img.src === window.initialUserSettings.bg) {
+                        img.classList.add('fit-selected');
+                    }
+                });
+            }
+        }, 100);
+    } else {
+        console.error('Не найден контейнер с фонами (fittingbg) или целевой элемент (.fitting-bg img)');
     }
 }
 
 function initIcons() {
-    let chariconContainer = document.querySelector('.pa-fld2 charicon');
+ const fittingIconsContainer = document.querySelector('fittingicons');
+    const targetIcon = document.querySelector('.pa-fld2 charicon.ficon img');
     
-    if (!chariconContainer) {
-        const paFld2 = document.querySelector('.pa-fld2');
-        if (paFld2) {
-            paFld2.innerHTML = `
-                <charinfo>
-                    <charicon>
-                        <img src="${window.initialUserSettings.icon || ''}">
-                    </charicon>
-                </charinfo>
-            `;
-            chariconContainer = paFld2.querySelector('charicon');
-        }
-    }
-    
-    let targetIcon = chariconContainer?.querySelector('img');
-    
-    const fittingIconsContainer = document.querySelector('fittingicons');
-    if (!fittingIconsContainer || !targetIcon) return;
-    
-    if (window.initialUserSettings.icon) {
-        targetIcon.src = window.initialUserSettings.icon;
-    }
-    
-    fittingIconsContainer.querySelectorAll('img').forEach(icon => {
-        icon.style.cursor = 'pointer';
-        
-        if (icon.src === targetIcon.src) {
-            icon.classList.add('fit-selected');
-        }
-        
-        icon.addEventListener('click', function() {
-            targetIcon.src = this.src;
-            window.__changed.icon = true;
-            
-            fittingIconsContainer.querySelectorAll('img').forEach(img => {
-                img.classList.remove('fit-selected');
-            });
-            this.classList.add('fit-selected');
+    if (fittingIconsContainer && targetIcon) {
+        fittingIconsContainer.querySelectorAll('img').forEach(icon => {
+            icon.classList.toggle('fit-selected', icon.src === targetIcon.src);
         });
-    });
+
+        fittingIconsContainer.querySelectorAll('img').forEach(icon => {
+            icon.style.cursor = 'pointer';
+
+            if (icon.src === targetIcon.src) {
+                icon.classList.add('fit-selected');
+            }
+
+            icon.addEventListener('click', function() {
+                fittingIconsContainer.querySelectorAll('img').forEach(i => {
+                    i.classList.remove('fit-selected');
+                });
+
+                this.classList.add('fit-selected');
+                targetIcon.src = this.src;
+                window.__changed.icon = true;
+            });
+        });
+    }
 }
 
 function initButtons() {
@@ -438,7 +460,7 @@ function copyChanges() {
     let fullCode = '';
 
     const currentBg = document.querySelector('.fitting-bg img')?.src || '';
-    const currentIcon = document.querySelector('charicon img')?.src || '';
+    const currentIcon = document.querySelector('.pa-fld2 charicon.ficon img')?.src || '';
     const plaque = document.querySelector('.fitting-plaque .plaque');
     const plaqueImg = plaque?.querySelector('img')?.src || '';
 
@@ -490,7 +512,7 @@ function resetToInitial() {
         });
     }
 
-    const iconImg = document.querySelector('charicon img');
+    const iconImg = document.querySelector('.pa-fld2 charicon.ficon img');
     if (iconImg) {
         iconImg.src = window.initialUserSettings.icon || window.initialState.icon;
         window.__changed.icon = false;
@@ -640,3 +662,4 @@ function showNotification(message) {
         setTimeout(() => notification.remove(), 300);
     }, 2000);
 }
+
