@@ -7,17 +7,16 @@ window.__changed = {
     username: false
 };
 
-window.userInitialColor = '#D4623E';
 window.initialState = {};
 window.initialUserSettings = {};
 
 function decodeHtml(html) {
     if (!html) return '';
     const safeHtml = html.replace(/&/g, "&amp;")
-                        .replace(/</g, "&lt;")
-                        .replace(/>/g, "&gt;")
-                        .replace(/"/g, "&quot;")
-                        .replace(/'/g, "&#039;");
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "'");
     const txt = document.createElement('textarea');
     txt.innerHTML = safeHtml;
     return txt.value;
@@ -46,34 +45,35 @@ function extractPlaqueTexts(plaque) {
 }
 
 function extractPlaqueColor(plaque) {
-    if (!plaque) return '#D4623E';
+    if (!plaque) return '#FFF';
     const style = plaque.getAttribute('style') || '';
     const colorMatch = style.match(/color:\s*(#[0-9A-F]{6})/i);
-    return colorMatch ? colorMatch[1] : '#D4623E';
+    return colorMatch ? colorMatch[1] : '#FFF';
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const userBg = typeof UserFld3 !== 'undefined' ? decodeHtml(UserFld3).match(/src=['"]([^'"]+)['"]/)?.[1] : '';
     const userIcon = typeof UserFld2 !== 'undefined' ? extractIconFromHtml(decodeHtml(UserFld2)) : '';
     const userPlaque = document.querySelector('.fitting-room .plaque');
-    
-    window.userInitialColor = userPlaque ? extractPlaqueColor(userPlaque) : '#D4623E';
+
+    window.userInitialColor = userPlaque ? extractPlaqueColor(userPlaque) : '#FFF';
     window.initialUserSettings = {
         bg: userBg,
         icon: userIcon,
         plaqueHTML: userPlaque ? userPlaque.outerHTML : '',
         plaqueTexts: userPlaque ? extractPlaqueTexts(userPlaque) : ['', '']
     };
-    
+
     saveInitialState();
-    
+
     initAvatar();
     initUsername();
     initPlaque();
     initBackgrounds();
     initIcons();
     initButtons();
-    
+    initManualInputs();
+
     if (window.initialUserSettings.icon) {
         const targetIcon = document.querySelector('charicon img');
         if (targetIcon) {
@@ -83,17 +83,17 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function saveInitialState() {
-    const plaqueElement = document.querySelector('.plaque') || 
-                     document.querySelector('plaque') || 
-                     document.querySelector('.fitting-plaque plaque');
-    const plaqueTexts = plaqueElement ? Array.from(plaqueElement.querySelectorAll('p')).map(p => p.textContent) : ['', ''];
-    
+    const userPlaque = document.querySelector('.pa-fld1 .plaque');
+    const plaqueTexts = userPlaque ? Array.from(userPlaque.querySelectorAll('p')).map(p => p.textContent) : ['', ''];
+    const plaqueImg = userPlaque?.querySelector('img')?.src || '';
+
     window.initialState = {
         bg: document.querySelector('.fitting-bg img')?.src || '',
         icon: document.querySelector('charicon img')?.src || '',
         avatar: document.querySelector('.fitting-avatar img')?.src || '',
         username: document.querySelector('.fitting-author a')?.textContent || '',
-        plaqueHTML: plaqueElement?.outerHTML || '',
+        plaqueHTML: userPlaque?.outerHTML || '',
+        plaqueImg: plaqueImg,
         plaqueTexts: plaqueTexts
     };
 }
@@ -101,13 +101,13 @@ function saveInitialState() {
 function initAvatar() {
     const avatarContainers = document.querySelectorAll('.fitting-avatar img');
     const initialAvatar = typeof UserAvatar !== 'undefined' ? UserAvatar : window.initialState.avatar;
-    
+
     if (initialAvatar) {
         avatarContainers.forEach(img => {
             img.src = initialAvatar;
             img.style.cursor = 'pointer';
 
-            img.addEventListener('click', function(e) {
+            img.addEventListener('click', function (e) {
                 e.stopPropagation();
                 openAvatarEditor(img);
             });
@@ -190,12 +190,12 @@ function openAvatarEditor(imgElement) {
 
 function initUsername() {
     const usernameElements = document.querySelectorAll('.fitting-author a');
-    
+
     if (typeof UserLogin !== 'undefined') {
         usernameElements.forEach(element => {
             const originalHref = element.getAttribute('href') || '#';
             const originalClass = element.getAttribute('class') || '';
-            
+
             element.textContent = UserLogin;
             element.setAttribute('href', originalHref);
             element.setAttribute('class', originalClass);
@@ -204,118 +204,127 @@ function initUsername() {
 }
 
 function initPlaque() {
-    let plaqueElement = document.querySelector('.plaque');
+    const plaqueElement = document.querySelector('.fitting-plaque .plaque');
     if (!plaqueElement) return;
-    window.updatePlaque = updatePlaque;
 
-    if (window.initialUserSettings.plaqueHTML) {
-        const userPlaque = new DOMParser()
-            .parseFromString(window.initialUserSettings.plaqueHTML, 'text/html')
-            .querySelector('.plaque');
+    const userPlaque = document.querySelector('.pa-fld1 .plaque');
 
-        if (userPlaque) {
-            plaqueElement.innerHTML = userPlaque.innerHTML;
-            const plaqueStyle = userPlaque.getAttribute('style');
-            if (plaqueStyle) {
-                plaqueElement.setAttribute('style', plaqueStyle);
+    window.initialUserSettings.plaqueHTML = userPlaque?.outerHTML || '';
+    window.initialUserSettings.plaqueImg = userPlaque?.querySelector('img')?.src || '';
+    window.initialUserSettings.plaqueTexts = userPlaque
+        ? Array.from(userPlaque.querySelectorAll('p')).map(p => p.textContent)
+        : ['', ''];
+
+    if (userPlaque) {
+        plaqueElement.innerHTML = userPlaque.innerHTML;
+    }
+
+    const inputs = document.querySelectorAll('.plaque-input');
+    inputs.forEach((input, index) => {
+        if (window.initialUserSettings.plaqueTexts[index]) {
+            input.value = window.initialUserSettings.plaqueTexts[index];
+        }
+    });
+
+    const plaqueImagesContainer = document.querySelector('fittingplaque');
+    if (plaqueImagesContainer) {
+        plaqueImagesContainer.querySelectorAll('img').forEach(img => {
+            if (img.src === window.initialUserSettings.plaqueImg) {
+                img.classList.add('fit-selected');
             }
-        }
+
+            img.addEventListener('click', function () {
+                const existingImg = plaqueElement.querySelector('img');
+                if (existingImg) existingImg.remove();
+
+                const newImg = document.createElement('img');
+                newImg.src = this.src;
+                plaqueElement.appendChild(newImg);
+
+                plaqueImagesContainer.querySelectorAll('img').forEach(i => {
+                    i.classList.remove('fit-selected');
+                });
+                this.classList.add('fit-selected');
+
+                window.initialUserSettings.plaqueImg = this.src;
+                window.__changed.plaqueImage = true;
+            });
+        });
     }
 
-    const controlsContainer = document.querySelector('.plaque-controls');
-    if (!controlsContainer) return;
-
-    const colorContainer = document.createElement('div');
-    colorContainer.style.display = 'flex';
-    colorContainer.style.alignItems = 'center';
-    colorContainer.style.margin = '10px 0';
-    colorContainer.style.gap = '10px';
-
-    const resetColorBtn = document.createElement('button');
-    resetColorBtn.textContent = 'Сбросить';
-    resetColorBtn.style.padding = '5px 10px';
-    resetColorBtn.style.marginRight = '10px';
-    resetColorBtn.style.fontFamily = 'Rubik';
-    resetColorBtn.style.fontSize = '12px';
-    resetColorBtn.style.cursor = 'pointer';
-
-    const colorPicker = document.createElement('input');
-    colorPicker.type = 'color';
-    colorPicker.value = window.userInitialColor;
-
-    const colorInput = document.createElement('input');
-    colorInput.type = 'text';
-    colorInput.placeholder = 'HEX-цвет (#RRGGBB)';
-    colorInput.value = window.userInitialColor;
-    colorInput.style.flex = '1';
-    colorInput.style.padding = '5px';
-    colorInput.style.maxWidth = '150px';
-
-    colorContainer.append(resetColorBtn, colorPicker, colorInput);
-    controlsContainer.appendChild(colorContainer);
-
-    function updatePlaque() {
-        const plaqueElement = document.querySelector('.plaque');
-        if (!plaqueElement) return;
-
-        const pTags = plaqueElement.querySelectorAll('p');
-        if (pTags[0]) {
-            pTags[0].textContent = document.querySelector('.plaque-input-line1')?.value || '';
-        }
-        if (pTags[1]) {
-            pTags[1].textContent = document.querySelector('.plaque-input-line2')?.value || '';
-        }
-
-        let color = colorPicker.value;
-        if (/^#[0-9A-F]{6}$/i.test(colorInput.value)) {
-            color = colorInput.value;
-            colorPicker.value = color;
-        }
-
-        plaqueElement.style.color = color;
-    }
-
-    document.querySelectorAll('.plaque-input').forEach(input => {
-        input.addEventListener('input', () => {
-            window.__changed.plaqueText = true;
-            updatePlaque();
+    inputs.forEach(input => {
+        input.addEventListener('input', function () {
+            const pTags = plaqueElement.querySelectorAll('p');
+            const index = Array.from(inputs).indexOf(this);
+            if (pTags[index]) {
+                pTags[index].textContent = this.value;
+                window.__changed.plaqueText = true;
+            }
         });
     });
+}
 
-    colorPicker.addEventListener('input', function () {
-        colorInput.value = this.value;
-        window.__changed.plaqueColor = true;
-        updatePlaque();
-    });
-
-    colorInput.addEventListener('input', function () {
-        if (/^#[0-9A-F]{6}$/i.test(this.value)) {
-            colorPicker.value = this.value;
-            window.__changed.plaqueColor = true;
-            updatePlaque();
+function initManualInputs() {
+    document.querySelector('.fit-icon')?.addEventListener('click', function () {
+        const url = document.querySelector('.icon-input').value.trim();
+        if (url) {
+            const icon = document.querySelector('charicon img');
+            if (icon) {
+                icon.src = url;
+                window.__changed.icon = true;
+                showNotification('Иконка обновлена!');
+            }
         }
     });
 
-    resetColorBtn.addEventListener('click', function () {
-        colorPicker.value = window.userInitialColor;
-        colorInput.value = window.userInitialColor;
-        window.__changed.plaqueColor = true;
-        updatePlaque();
-        showNotification('Цвет сброшен к исходному');
+    document.querySelector('.fit-bg')?.addEventListener('click', function () {
+        const url = document.querySelector('.bg-input').value.trim();
+        if (url) {
+            const bg = document.querySelector('.fitting-bg img');
+            if (bg) {
+                bg.src = url;
+                window.__changed.bg = true;
+                showNotification('Фон обновлен!');
+            }
+        }
     });
 
-    const initialTexts = window.initialUserSettings.plaqueTexts || [];
-    document.querySelectorAll('.plaque-input').forEach((input, index) => {
-        if (input) input.value = initialTexts[index] || '';
+    document.querySelector('.fit-plaq')?.addEventListener('click', function () {
+        const url = document.querySelector('.plaq-input').value.trim();
+        if (url) {
+            const plaque = document.querySelector('.fitting-plaque .plaque');
+            if (plaque) {
+                let img = plaque.querySelector('img');
+                if (!img) {
+                    img = document.createElement('img');
+                    plaque.appendChild(img);
+                }
+                img.src = url;
+                window.__changed.plaqueImage = true;
+                window.initialUserSettings.plaqueImg = url;
+                showNotification('Изображение плашки обновлено!');
+            }
+        }
     });
 
-    updatePlaque(); 
+    document.querySelectorAll('.icon-input, .bg-input, .plaq-input').forEach(input => {
+        input.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                const buttonMap = {
+                    'icon-input': '.fit-icon',
+                    'bg-input': '.fit-bg',
+                    'plaq-input': '.fit-plaq'
+                };
+                document.querySelector(buttonMap[this.classList[0]])?.click();
+            }
+        });
+    });
 }
 
 function initBackgrounds() {
     const bgContainer = document.querySelector('fittingbg');
     const targetBg = document.querySelector('.fitting-bg img');
-    
+
     if (bgContainer && targetBg) {
         if (window.initialUserSettings.bg) {
             targetBg.src = window.initialUserSettings.bg;
@@ -323,16 +332,16 @@ function initBackgrounds() {
 
         bgContainer.querySelectorAll('img').forEach(bgImg => {
             bgImg.style.cursor = 'pointer';
-            
+
             if (bgImg.src === targetBg.src) {
                 bgImg.classList.add('fit-selected');
             }
 
-            bgImg.addEventListener('click', function() {
+            bgImg.addEventListener('click', function () {
                 bgContainer.querySelectorAll('img').forEach(img => {
                     img.classList.remove('fit-selected');
                 });
-                
+
                 this.classList.add('fit-selected');
                 targetBg.src = this.src;
                 window.__changed.bg = true;
@@ -344,7 +353,7 @@ function initBackgrounds() {
 function initIcons() {
     const fittingIconsContainer = document.querySelector('fittingicons');
     const targetIcon = document.querySelector('charicon img');
-    
+
     if (fittingIconsContainer && targetIcon) {
         if (window.initialUserSettings.icon) {
             targetIcon.src = window.initialUserSettings.icon;
@@ -357,7 +366,7 @@ function initIcons() {
                 icon.classList.add('fit-selected');
             }
 
-            icon.addEventListener('click', function() {
+            icon.addEventListener('click', function () {
                 fittingIconsContainer.querySelectorAll('img').forEach(i => {
                     i.classList.remove('fit-selected');
                 });
@@ -387,55 +396,37 @@ function copyChanges() {
 
     const currentBg = document.querySelector('.fitting-bg img')?.src || '';
     const currentIcon = document.querySelector('charicon img')?.src || '';
-    const plaque = document.querySelector('.plaque');
+    const plaque = document.querySelector('.fitting-plaque .plaque');
+    const plaqueImg = plaque?.querySelector('img')?.src || '';
 
-    const currentText1 = document.querySelector('.plaque-input-line1')?.value || '';
-    const currentText2 = document.querySelector('.plaque-input-line2')?.value || '';
+    const inputs = document.querySelectorAll('.plaque-input');
+    const currentText1 = inputs[0]?.value || '';
+    const currentText2 = inputs[1]?.value || '';
 
-    const colorInput = document.querySelector('.plaque-controls input[type="text"][placeholder^="HEX"]');
-    const colorPicker = document.querySelector('.plaque-controls input[type="color"]');
-
-    let currentColor = colorInput?.value || colorPicker?.value || '#d4623e';
-
-    if (!/^#[0-9a-f]{6}$/i.test(currentColor)) {
-        currentColor = '#d4623e'; 
+    if (currentBg !== (window.initialUserSettings.bg || window.initialState.bg)) {
+        fullCode += `бэкграунд профиля\n[code]<img src="${currentBg}">[/code]\n\n`;
     }
 
-    const plaqueHTML = plaque
-        ? `<div class="plaque" style="color: ${currentColor}"><p>${currentText1}</p><p>${currentText2}</p></div>`
-        : '';
-
-    const bgChanged = currentBg !== (window.initialUserSettings.bg || window.initialState.bg);
-    const iconChanged = currentIcon !== (window.initialUserSettings.icon || window.initialState.icon);
-
-    const initialTexts = window.initialUserSettings.plaqueTexts || window.initialState.plaqueTexts || ['', ''];
-    const initialColor = (() => {
-        const rawHTML = window.initialUserSettings.plaqueHTML || window.initialState.plaqueHTML || '';
-        const temp = document.createElement('div');
-        temp.innerHTML = rawHTML;
-        const style = temp.querySelector('.plaque')?.getAttribute('style') || '';
-        const match = style.match(/color:\s*(#[0-9A-Fa-f]{6})/i);
-        return match ? match[1].toLowerCase() : '#d4623e';
-    })();
-
-    const textChanged = currentText1 !== initialTexts[0] || currentText2 !== initialTexts[1];
-    const colorChanged = currentColor.toLowerCase() !== initialColor;
-    const plaqueChanged = textChanged || colorChanged;
-
-    if (bgChanged) {
-        fullCode += `бэкграунд профиля - 250\n[code]<img src="${currentBg}">[/code]\n\n`;
+    if (currentIcon !== (window.initialUserSettings.icon || window.initialState.icon)) {
+        fullCode += `иконка\n[code]<charicon><img src="${currentIcon}"></charicon>[/code]\n\n`;
     }
 
-    if (iconChanged) {
-        fullCode += `иконка - 150 \n[code]<charicon><img src="${currentIcon}"></charicon>[/code]\n\n`;
-    }
+    const initialTexts = window.initialUserSettings.plaqueTexts || ['', ''];
+    const initialImg = window.initialUserSettings.plaqueImg || '';
 
-    if (plaqueChanged && plaqueHTML) {
-        fullCode += `плашка - 200\n[code]${plaqueHTML}[/code]`;
+    const texts = Array.from(plaque?.querySelectorAll('p') || []).map(p => p.textContent);
+    const textChanged = texts[0] !== initialTexts[0] || texts[1] !== initialTexts[1];
+    const imgChanged = plaqueImg !== initialImg;
+
+    if (textChanged || imgChanged) {
+        fullCode += `плашка\n[code]<div class="plaque">
+            <p>${texts[0] || ''}</p>
+            <p>${texts[1] || ''}</p>
+            ${plaqueImg ? `<img src="${plaqueImg}">` : ''}
+        </div>[/code]\n\n`;
     }
 
     if (fullCode.trim()) {
-        fullCode += `\n\n[b]итого:[/b]\nсумма в профиле - сумма покупок = оставшаяся на счету сумма`;
         copyToClipboard(fullCode);
     } else {
         showNotification('Никаких изменений для копирования не найдено!');
@@ -447,6 +438,13 @@ function resetToInitial() {
     if (bgImg) {
         bgImg.src = window.initialUserSettings.bg || window.initialState.bg;
         window.__changed.bg = false;
+
+        document.querySelectorAll('fittingbg img').forEach(img => {
+            img.classList.remove('fit-selected');
+            if (img.src === (window.initialUserSettings.bg || window.initialState.bg)) {
+                img.classList.add('fit-selected');
+            }
+        });
     }
 
     const iconImg = document.querySelector('charicon img');
@@ -473,7 +471,7 @@ function resetToInitial() {
         element.textContent = typeof UserLogin !== 'undefined' ? UserLogin : window.initialState.username;
     });
 
-    const plaque = document.querySelector('.plaque');
+    const plaque = document.querySelector('.fitting-plaque .plaque');
     if (plaque) {
         const initialPlaque = window.initialUserSettings.plaqueHTML
             ? new DOMParser().parseFromString(window.initialUserSettings.plaqueHTML, 'text/html').querySelector('.plaque')
@@ -483,30 +481,41 @@ function resetToInitial() {
             plaque.innerHTML = initialPlaque.innerHTML;
             plaque.setAttribute('style', initialPlaque.getAttribute('style') || '');
         } else {
-            const texts = window.initialUserSettings.plaqueTexts || window.initialState.plaqueTexts;
+            const texts = window.initialUserSettings.plaqueTexts || window.initialState.plaqueTexts || ['', ''];
             const pTags = plaque.querySelectorAll('p');
-            texts.forEach((text, index) => {
-                if (pTags[index]) pTags[index].textContent = text;
+            pTags.forEach((p, index) => {
+                if (texts[index]) p.textContent = texts[index];
             });
             plaque.style.color = window.userInitialColor;
         }
 
+        const plaqueImagesContainer = document.querySelector('fittingplaque');
+        if (plaqueImagesContainer) {
+            const initialImg = window.initialUserSettings.plaqueImg || '';
+            plaqueImagesContainer.querySelectorAll('img').forEach(img => {
+                img.classList.remove('fit-selected');
+                if (img.src === initialImg) {
+                    img.classList.add('fit-selected');
+                }
+            });
+        }
+
         window.__changed.plaqueText = false;
         window.__changed.plaqueColor = false;
+        window.__changed.plaqueImage = false;
     }
 
     document.querySelectorAll('.plaque-input').forEach((input, index) => {
-        const texts = window.initialUserSettings.plaqueTexts || window.initialState.plaqueTexts;
-        if (input && texts[index]) input.value = texts[index];
+        const texts = window.initialUserSettings.plaqueTexts || window.initialState.plaqueTexts || ['', ''];
+        if (input && texts[index]) {
+            input.value = texts[index];
+        } else {
+            input.value = '';
+        }
     });
-
-    if (typeof window.updatePlaque === 'function') {
-        window.updatePlaque();
-    }
 
     const colorInput = document.querySelector('.plaque-controls input[type="text"][placeholder^="HEX"]');
     const colorPicker = document.querySelector('.plaque-controls input[type="color"]');
-
     if (colorInput && colorPicker) {
         const initialColor = window.initialUserSettings.plaqueHTML
             ? extractPlaqueColor(new DOMParser().parseFromString(window.initialUserSettings.plaqueHTML, 'text/html').querySelector('.plaque'))
@@ -514,6 +523,10 @@ function resetToInitial() {
 
         colorInput.value = initialColor;
         colorPicker.value = initialColor;
+    }
+
+    if (typeof window.updatePlaque === 'function') {
+        window.updatePlaque();
     }
 
     showNotification('Все значения сброшены к изначальным');
@@ -531,7 +544,7 @@ function createModalButton(text, onClick, bgColor = '#e0e0e0', textColor = 'blac
         color: textColor,
         borderRadius: '5px'
     });
-    button.addEventListener('click', function(e) {
+    button.addEventListener('click', function (e) {
         e.stopPropagation();
         onClick();
     });
@@ -571,7 +584,7 @@ function showNotification(message) {
         backgroundColor: 'rgba(0,0,0,0.7)',
         color: 'white',
         padding: '10px 20px',
-        fontFamily: 'Rubik', 
+        fontFamily: 'Roboto Flex',
         fontSize: '12px',
         borderRadius: '5px',
         zIndex: '10000',
@@ -584,4 +597,3 @@ function showNotification(message) {
         setTimeout(() => notification.remove(), 300);
     }, 2000);
 }
-
