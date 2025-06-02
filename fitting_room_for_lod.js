@@ -1,4 +1,4 @@
-
+// версия 5
 window.__changed = {
     bg: false,
     icon: false,
