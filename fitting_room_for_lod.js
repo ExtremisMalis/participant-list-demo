@@ -24,15 +24,13 @@ function decodeHtml(html) {
 
 function extractIconFromHtml(html) {
     if (!html) return '';
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    
-    const charicon = doc.querySelector('charicon');
-    if (charicon && charicon.querySelector('img')) {
-        return charicon.querySelector('img').src;
+    try {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return doc.querySelector('charicon img')?.src || '';
+    } catch (e) {
+        console.error('Error parsing icon HTML:', e);
+        return '';
     }
-    
-    const img = doc.querySelector('img');
-    return img ? img.src : '';
 }
 
 function extractPlaqueFromHtml(html) {
@@ -79,6 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initIcons();
     initButtons();
     initManualInputs();
+    initUserIcon();
 
     if (window.initialUserSettings.icon) {
         let targetIcon = document.querySelector('charicon img');
@@ -211,6 +210,23 @@ function initUsername() {
             element.setAttribute('href', originalHref);
             element.setAttribute('class', originalClass);
         });
+    }
+}
+
+function initUserIcon() {
+    const chariconContainer = document.querySelector('.pa-fld2 charicon');
+    
+    if (!chariconContainer) return;
+    
+    const fishIcon = chariconContainer.querySelector('img');
+    
+    if (window.initialUserSettings.icon) {
+        if (fishIcon) {
+            fishIcon.src = window.initialUserSettings.icon;
+        } 
+        else {
+            chariconContainer.innerHTML = `<img src="${window.initialUserSettings.icon}">`;
+        }
     }
 }
 
@@ -362,40 +378,48 @@ function initBackgrounds() {
 }
 
 function initIcons() {
-    const fittingIconsContainer = document.querySelector('fittingicons');
-    let targetIcon = document.querySelector('charicon img');
+    let chariconContainer = document.querySelector('.pa-fld2 charicon');
     
-    if (!targetIcon) {
-        const charicon = document.querySelector('charicon') || document.createElement('charicon');
-        if (!charicon.querySelector('img')) {
-            charicon.innerHTML = '<img src="">';
+    if (!chariconContainer) {
+        const paFld2 = document.querySelector('.pa-fld2');
+        if (paFld2) {
+            paFld2.innerHTML = `
+                <charinfo>
+                    <charicon>
+                        <img src="${window.initialUserSettings.icon || ''}">
+                    </charicon>
+                </charinfo>
+            `;
+            chariconContainer = paFld2.querySelector('charicon');
         }
-        targetIcon = charicon.querySelector('img');
     }
-
-    if (fittingIconsContainer && targetIcon) {
-        if (window.initialUserSettings.icon) {
-            targetIcon.src = window.initialUserSettings.icon;
+    
+    let targetIcon = chariconContainer?.querySelector('img');
+    
+    const fittingIconsContainer = document.querySelector('fittingicons');
+    if (!fittingIconsContainer || !targetIcon) return;
+    
+    if (window.initialUserSettings.icon) {
+        targetIcon.src = window.initialUserSettings.icon;
+    }
+    
+    fittingIconsContainer.querySelectorAll('img').forEach(icon => {
+        icon.style.cursor = 'pointer';
+        
+        if (icon.src === targetIcon.src) {
+            icon.classList.add('fit-selected');
         }
-
-        fittingIconsContainer.querySelectorAll('img').forEach(icon => {
-            icon.style.cursor = 'pointer';
-
-            if (icon.src === targetIcon.src) {
-                icon.classList.add('fit-selected');
-            }
-
-            icon.addEventListener('click', function() {
-                fittingIconsContainer.querySelectorAll('img').forEach(i => {
-                    i.classList.remove('fit-selected');
-                });
-
-                this.classList.add('fit-selected');
-                targetIcon.src = this.src;
-                window.__changed.icon = true;
+        
+        icon.addEventListener('click', function() {
+            targetIcon.src = this.src;
+            window.__changed.icon = true;
+            
+            fittingIconsContainer.querySelectorAll('img').forEach(img => {
+                img.classList.remove('fit-selected');
             });
+            this.classList.add('fit-selected');
         });
-    }
+    });
 }
 
 function initButtons() {
