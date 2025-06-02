@@ -1,4 +1,4 @@
-// версия 5
+
 window.__changed = {
     bg: false,
     icon: false,
@@ -24,10 +24,24 @@ function decodeHtml(html) {
 }
 
 function extractIconFromUserFld2() {
-    if (typeof UserFld2 === 'undefined' || !UserFld2) return '';
+    if (typeof UserFld2 === 'undefined' || !UserFld2 || typeof UserFld2 !== 'string') {
+        console.warn('UserFld2 не существует или пуст');
+        return '';
+    }
     
-    const imgMatch = UserFld2.match(/<img[^>]+src=['"]([^'"]+)['"]/);
-    return imgMatch ? imgMatch[1] : '';
+    try {
+        const decoded = decodeHtml(UserFld2);
+        if (!decoded.includes('charicon')) {
+            console.warn('UserFld2 не содержит charicon');
+            return '';
+        }
+        
+        const imgMatch = decoded.match(/<img[^>]+src=['"]([^'"]+)['"]/);
+        return imgMatch ? imgMatch[1] : '';
+    } catch (e) {
+        console.error('Ошибка парсинга UserFld2:', e);
+        return '';
+    }
 }
 
 function extractPlaqueFromHtml(html) {
@@ -56,10 +70,17 @@ function extractPlaqueColor(plaque) {
   document.addEventListener('DOMContentLoaded', function() {
     const userBg = typeof UserFld3 !== 'undefined' ? decodeHtml(UserFld3).match(/src=['"]([^'"]+)['"]/)?.[1] : '';
 
-    const decodedFld2 = decodeHtml(UserFld2);
     
-    const userIcon = decodedFld2.match(/<img[^>]+src=['"]([^'"]+)['"]/)?.[1] || '';
-    
+    const hasUserFld2 = typeof UserFld2 !== 'undefined' && UserFld2;
+
+    const userIcon = hasUserFld2 
+    ? decodeHtml(UserFld2).match(/<img[^>]+src=['"]([^'"]+)['"]/)?.[1] || ''
+    : '';    
+if (userIcon) {
+    const iconImg = document.querySelector('.pa-fld2 charicon.ficon img');
+    if (iconImg) iconImg.src = userIcon;
+}
+
     const iconImg = document.querySelector('.pa-fld2 charicon.ficon img');
     
     if (iconImg) {
@@ -70,9 +91,7 @@ function extractPlaqueColor(plaque) {
             document.querySelectorAll('fittingicons img').forEach(icon => {
                 icon.classList.toggle('fit-selected', icon.src === userIcon);
             });
-        } else {
-            console.warn('Не удалось извлечь иконку из:', decodedFld2);
-        }
+        } 
     }
 
 function decodeHtml(html) {
@@ -155,8 +174,6 @@ function initAvatar() {
     }
 }
 
-console.log('UserFld2 содержимое:', UserFld2);
-console.log('Извлечённая иконка:', extractIconFromUserFld2());
 
 function openAvatarEditor(imgElement) {
     const existingModal = document.querySelector('.edit-modal.avatar-modal');
@@ -662,4 +679,6 @@ function showNotification(message) {
         setTimeout(() => notification.remove(), 300);
     }, 2000);
 }
+
+
 
