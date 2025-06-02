@@ -25,7 +25,13 @@ function decodeHtml(html) {
 function extractIconFromHtml(html) {
     if (!html) return '';
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const img = doc.querySelector('charicon img');
+    
+    const charicon = doc.querySelector('charicon');
+    if (charicon && charicon.querySelector('img')) {
+        return charicon.querySelector('img').src;
+    }
+    
+    const img = doc.querySelector('img');
     return img ? img.src : '';
 }
 
@@ -75,8 +81,13 @@ document.addEventListener('DOMContentLoaded', function () {
     initManualInputs();
 
     if (window.initialUserSettings.icon) {
-        const targetIcon = document.querySelector('charicon img');
-        if (targetIcon) {
+        let targetIcon = document.querySelector('charicon img');
+        if (!targetIcon) {
+            const charicon = document.querySelector('charicon') || document.createElement('charicon');
+            document.body.appendChild(charicon);
+            charicon.innerHTML = `<img src="${window.initialUserSettings.icon}">`;
+            targetIcon = charicon.querySelector('img');
+        } else {
             targetIcon.src = window.initialUserSettings.icon;
         }
     }
@@ -352,7 +363,15 @@ function initBackgrounds() {
 
 function initIcons() {
     const fittingIconsContainer = document.querySelector('fittingicons');
-    const targetIcon = document.querySelector('charicon img');
+    let targetIcon = document.querySelector('charicon img');
+    
+    if (!targetIcon) {
+        const charicon = document.querySelector('charicon') || document.createElement('charicon');
+        if (!charicon.querySelector('img')) {
+            charicon.innerHTML = '<img src="">';
+        }
+        targetIcon = charicon.querySelector('img');
+    }
 
     if (fittingIconsContainer && targetIcon) {
         if (window.initialUserSettings.icon) {
@@ -366,7 +385,7 @@ function initIcons() {
                 icon.classList.add('fit-selected');
             }
 
-            icon.addEventListener('click', function () {
+            icon.addEventListener('click', function() {
                 fittingIconsContainer.querySelectorAll('img').forEach(i => {
                     i.classList.remove('fit-selected');
                 });
